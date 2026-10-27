@@ -1,0 +1,65 @@
+{
+    "##": "DevWS handles its own same-account UAC elevation. The uninstaller is intentionally skipped during Scoop updates; those must run DevWS setup as an upgrade, not a full uninstall.",
+    "version": "0.2.0",
+    "description": "A configuration-driven workspace orchestrator for Windows.",
+    "homepage": "https://github.com/ekinokss/DevWS",
+    "license": "MIT",
+    "notes": [
+        "DevWS requires Windows 11 x64, PowerShell 7, and a genuine stable Windows Terminal installation.",
+        "Run Scoop from an elevated PowerShell under the same Windows account that should own DevWS. A non-elevated Scoop invocation is not validated for this bucket. UAC elevation using another administrator account is intentionally rejected.",
+        "The installer is unsigned and may trigger Microsoft Defender SmartScreen. Download only from the official GitHub Release and verify the published SHA-256.",
+        "If a trusted machine-wide AutoHotkey v2 installation is missing, DevWS setup acquires it through WinGet; network access is required.",
+        "Uninstall uses the protected DevWS setup registered for the current Windows account, not the Scoop-downloaded installer."
+    ],
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/ekinokss/DevWS/releases/download/v0.2.0/DevWS-Setup.exe#/setup.exe",
+            "hash": "7a87e08bb4b5d802ed3f2cd7566a73242c07965aadae7f003a384e5eaa597dce"
+        }
+    },
+    "installer": {
+        "script": [
+            "$setup = Join-Path $dir 'setup.exe'",
+            "if (-not (Test-Path -LiteralPath $setup -PathType Leaf)) { throw 'DevWS setup download is missing.' }",
+            "$p = Start-Process -FilePath $setup -PassThru",
+            "if (-not $p) { throw 'DevWS setup did not start.' }",
+            "$p.WaitForExit()",
+            "if ($p.ExitCode -ne 0) { throw \"DevWS setup exited with code $($p.ExitCode).\" }"
+        ]
+    },
+    "post_install": [
+        "$key = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\ekinokss.DevWS'",
+        "if (-not (Test-Path -LiteralPath $key)) { throw 'DevWS did not register under the current Windows account.' }",
+        "$installed = [string](Get-ItemProperty -LiteralPath $key -ErrorAction Stop).DisplayVersion",
+        "if ($installed -ne $version) { throw \"DevWS registered version '$installed', expected '$version'.\" }"
+    ],
+    "uninstaller": {
+        "script": [
+            "if ($cmd -ne 'uninstall') { return }",
+            "$key = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\ekinokss.DevWS'",
+            "if (-not (Test-Path -LiteralPath $key)) { Write-Host 'DevWS is not registered for the current Windows account; nothing to uninstall.'; return }",
+            "$uninstall = [string](Get-ItemProperty -LiteralPath $key -ErrorAction Stop).UninstallString",
+            "if ($uninstall -notmatch '^\"([^\"]+)\"\\s+--uninstall$') { throw 'The DevWS uninstall registration is malformed.' }",
+            "$exe = $Matches[1]",
+            "if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'The registered DevWS uninstall executable is missing.' }",
+            "$p = Start-Process -FilePath $exe -ArgumentList '--uninstall' -PassThru",
+            "if (-not $p) { throw 'DevWS uninstall did not start.' }",
+            "$p.WaitForExit()",
+            "if ($p.ExitCode -ne 0) { throw \"DevWS uninstall exited with code $($p.ExitCode).\" }"
+        ]
+    },
+    "checkver": {
+        "github": "https://github.com/ekinokss/DevWS"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/ekinokss/DevWS/releases/download/v$version/DevWS-Setup.exe#/setup.exe"
+            }
+        },
+        "hash": {
+            "url": "https://github.com/ekinokss/DevWS/releases/download/v$version/SHA256SUMS.txt",
+            "regex": "(?m)^([a-f0-9]{64})\\s+DevWS-Setup\\.exe$"
+        }
+    }
+}

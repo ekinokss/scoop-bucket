@@ -13,6 +13,9 @@ scoop bucket add ekinokss https://github.com/ekinokss/scoop-bucket
 scoop install ekinokss/devws
 ```
 
+The `scoop bucket add` command requires Git. If Scoop reports that Git is required, run
+`scoop install git` first.
+
 The current package is DevWS `0.2.0`, installed from the official immutable GitHub Release:
 
 - https://github.com/ekinokss/DevWS/releases/tag/v0.2.0
